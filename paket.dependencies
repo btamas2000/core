@@ -3,6 +3,9 @@ redirects: on
 
 framework: net5.0, netstandard2.0
 source https://api.nuget.org/v3/index.json
+source paket-files/github.com/intellifactory/sitelets/nupkgs/
+git https://github.com/intellifactory/sitelets.git main build: "build.cmd", OS: windows
+git https://github.com/intellifactory/sitelets.git main build: "build.sh", OS: mono
 strategy: min
 storage: none
 
@@ -17,6 +20,7 @@ nuget Microsoft.AspNetCore.Hosting.Abstractions 2.0.0
 nuget Microsoft.AspNetCore.Authentication.Abstractions 2.0.0
 nuget Microsoft.Extensions.DependencyModel 2.0.0
 nuget Microsoft.CSharp 4.7.0
+nuget Sitelets
 
 nuget System.Net.Http ~> 4.3.0
 nuget FSharp.Core 5.0.0

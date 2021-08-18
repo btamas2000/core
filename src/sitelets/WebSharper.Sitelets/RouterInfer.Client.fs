@@ -20,6 +20,7 @@
 
 namespace WebSharper.Sitelets
 
+open Sitelets
 open WebSharper
 open WebSharper.Core
 open WebSharper.Core.AST
@@ -96,20 +97,20 @@ module private ClientRoutingInternals =
     let rInt64Op = getMethod <@ RouterOperators.rInt64 @>
     let rUInt64Op = getMethod <@ RouterOperators.rUInt64 @>
     let rSingleOp = getMethod <@ RouterOperators.rSingle @>
-    let TupleOp = getMethod <@ RouterOperators.JSTuple [||] @>
-    let ArrayOp = getMethod <@ RouterOperators.JSArray RouterOperators.rInt @>
-    let ListOp = getMethod <@ RouterOperators.JSList RouterOperators.rInt @>
-    let RecordOp = getMethod <@ RouterOperators.JSRecord null [||] @>
-    let UnionOp = getMethod <@ RouterOperators.JSUnion null [||] @>
-    let QueryOp = getMethod <@ RouterOperators.JSQuery null RouterOperators.rInt @>
-    let QueryOptionOp = getMethod <@ RouterOperators.JSQueryOption null RouterOperators.rInt @>
-    let QueryNullableOp = getMethod <@ RouterOperators.JSQueryNullable null RouterOperators.rInt @>
-    let FormDataOp = getMethod <@ RouterOperators.JSFormData RouterOperators.rInt @>
-    let JsonOp = getMethod <@ RouterOperators.JSJson<int> @>
-    let NullableOp = getMethod <@ RouterOperators.JSNullable RouterOperators.rInt @>
-    let ClassOp = getMethod <@ RouterOperators.JSClass (fun () -> null) [||] [||] [||] @>
-    let BoxOp = getMethod <@ RouterOperators.JSBox Unchecked.defaultof<_> @>
-    let DelayOp = getMethod <@ RouterOperators.JSDelayed Unchecked.defaultof<_> @>
+    //let TupleOp = getMethod <@ RouterOperators.JSTuple [||] @>
+    //let ArrayOp = getMethod <@ RouterOperators.JSArray RouterOperators.rInt @>
+    //let ListOp = getMethod <@ RouterOperators.JSList RouterOperators.rInt @>
+    //let RecordOp = getMethod <@ RouterOperators.JSRecord null [||] @>
+    //let UnionOp = getMethod <@ RouterOperators.JSUnion null [||] @>
+    //let QueryOp = getMethod <@ RouterOperators.JSQuery null RouterOperators.rInt @>
+    //let QueryOptionOp = getMethod <@ RouterOperators.JSQueryOption null RouterOperators.rInt @>
+    //let QueryNullableOp = getMethod <@ RouterOperators.JSQueryNullable null RouterOperators.rInt @>
+    //let FormDataOp = getMethod <@ RouterOperators.JSFormData RouterOperators.rInt @>
+    //let JsonOp = getMethod <@ RouterOperators.JSJson<int> @>
+    //let NullableOp = getMethod <@ RouterOperators.JSNullable RouterOperators.rInt @>
+    //let ClassOp = getMethod <@ RouterOperators.JSClass (fun () -> null) [||] [||] [||] @>
+    //let BoxOp = getMethod <@ RouterOperators.JSBox Unchecked.defaultof<_> @>
+    //let DelayOp = getMethod <@ RouterOperators.JSDelayed Unchecked.defaultof<_> @>
     let rWildCardOp = getMethod <@ RouterOperators.rWildcard @>
     let rWildCardArrayOp = getMethod <@ RouterOperators.rWildcardArray RouterOperators.rInt @>
     let rWildCardListOp = getMethod <@ RouterOperators.rWildcardList RouterOperators.rInt @>
@@ -477,31 +478,3 @@ type RoutingMacro() =
             else res   
 
         | _ -> MacroError "Expecting a type argument for RoutingMacro"
-
-[<AutoOpen>]
-module InferRouter =
-
-    module Router =
-        /// Creates a router based on type shape and WebSharper attributes.
-        [<Macro(typeof<RoutingMacro>)>]
-        let Infer<'T when 'T: equality>() = 
-            S.getRouter typeof<'T>
-            |> ServerInferredOperators.Unbox<'T>
-
-        /// Creates a router based on type shape and WebSharper attributes,
-        /// that catches wrong method, query and request body errors.
-        let InferWithCustomErrors<'T when 'T: equality>() =
-            S.getRouter typeof<'T>
-            |> ServerInferredOperators.IWithCustomErrors typeof<ParseRequestResult<'T>>
-            |> ServerInferredOperators.Unbox<ParseRequestResult<'T>>
-
-        /// Optimized version of Infer to use straight in a Sitelet
-        let internal IInfer<'T when 'T: equality>() = 
-            S.getRouter typeof<'T>
-            |> ServerInferredOperators.IUnbox<'T>
-
-        /// Optimized version of InferWithCustomErrors to use straight in a Sitelet
-        let internal IInferWithCustomErrors<'T when 'T: equality>() =
-            S.getRouter typeof<'T> 
-            |> ServerInferredOperators.IWithCustomErrors typeof<ParseRequestResult<'T>>
-            |> ServerInferredOperators.IUnbox<ParseRequestResult<'T>>

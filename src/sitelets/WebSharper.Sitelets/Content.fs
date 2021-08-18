@@ -21,13 +21,49 @@
 namespace WebSharper.Sitelets
 
 open System.IO
+open Sitelets
 open WebSharper
+open Microsoft.AspNetCore.Http
+open Microsoft.AspNetCore.Mvc
+open System.Threading.Tasks
+
 module CT = WebSharper.Core.ContentTypes
 
-[<CompiledName "FSharpContent">]
+module private ContentHelper =
+
+    let writeResponseAsync (resp: HttpResponse) (out: HttpResponse) : Async<unit> =
+        async {
+            use memStr = new MemoryStream()
+            do
+                out.StatusCode <- resp.StatusCode
+                //for name, hs in resp.Headers |> Seq.groupBy (fun h -> h.Name) do
+                //    let values =
+                //        [| for h in hs -> h.Value |]
+                //        |> Microsoft.Extensions.Primitives.StringValues
+                //    out.Headers.Append(name, values)
+                resp.Body.CopyTo(memStr :> Stream)
+                memStr.Seek(0L, SeekOrigin.Begin) |> ignore
+            do! memStr.CopyToAsync(out.Body) |> Async.AwaitTask    
+        }
+
 type Content<'Endpoint> =
-    | CustomContent of (Context<'Endpoint> -> Http.Response)
-    | CustomContentAsync of (Context<'Endpoint> -> Async<Http.Response>)
+    | Content of (Context<'Endpoint> -> Task<HttpResponse>)
+
+    static member ToResponse<'T> (c: Content<'T>) (ctx: Context<'T>) : Task<HttpResponse> =
+        match c with
+        | Content x -> x ctx
+
+    interface IActionResult with
+        member x.ExecuteResultAsync (context: ActionContext) : Task =
+            let ctx = context.HttpContext.Items.TryGetValue("WebSharper.Sitelets.Context")
+            match ctx with
+            | true, o ->
+                async {
+                    let! rsp = Content<_>.ToResponse x (o:?>Context<_>)
+                    do! ContentHelper.writeResponseAsync rsp context.HttpContext.Response
+                } |> Async.StartAsTask :> Task
+            | false, _ ->
+                failwith ""
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Content =
@@ -131,7 +167,7 @@ module Content =
         if hasResources then tw.WriteStartCode(ctx.ResourceContext.ScriptBaseUrl)
         w.ToString()
     
-    let toCustomContentAsync (genPage: Context<'T> -> Async<Page>) context : Async<Http.Response> =
+    let toCustomContentAsync (genPage: Context<'T> -> Async<Page>) context : Async<HttpResponse> =
         async {
             let! htmlPage = genPage context
             let writeBody (stream: Stream) =
@@ -191,7 +227,7 @@ module Content =
                 }
             }
 
-    let ToResponse<'T> (c: Content<'T>) (ctx: Context<'T>) : Async<Http.Response> =
+    let ToResponse<'T> (c: Content<'T>) (ctx: Context<'T>) : Async<HttpResponse> =
         match c with
         | CustomContent x -> async.Return (x ctx)
         | CustomContentAsync x -> x ctx
@@ -214,7 +250,7 @@ module Content =
     let delay1 f =
         fun arg -> async { return f arg }
 
-    let MapResponseAsync<'T> (f: Http.Response -> Async<Http.Response>) (content: Async<Content<'T>>) =
+    let MapResponseAsync<'T> (f: HttpResponse -> Async<HttpResponse>) (content: Async<Content<'T>>) =
         let genResp content =
             match content with
             | CustomContent gen -> delay1 gen
@@ -227,7 +263,7 @@ module Content =
             }
         |> async.Return
 
-    let MapResponse<'T> (f: Http.Response -> Http.Response) (content: Async<Content<'T>>) =
+    let MapResponse<'T> (f: HttpResponse -> HttpResponse) (content: Async<Content<'T>>) =
         let genResp content =
             match content with
             | CustomContent gen -> delay1 gen
@@ -257,13 +293,19 @@ module Content =
     let WithContentType<'T> (contentType: string) (cont: Async<Content<'T>>) =
         cont |> WithHeaders [Http.Header.Custom "Content-Type" contentType]
 
-    let SetStatus<'T> (status: Http.Status) (cont: Async<Content<'T>>) =
+    let SetStatus<'T> (status: int) (cont: Async<Content<'T>>) =
         cont
-        |> MapResponse (fun resp -> { resp with Status = status })
+        |> MapResponse (fun resp ->
+            resp.StatusCode <- status
+            resp
+        )
 
-    let SetBody<'T> (writeBody: System.IO.Stream -> unit) (cont: Async<Content<'T>>) =
+    let SetBody<'T> (body: System.IO.Stream) (cont: Async<Content<'T>>) =
         cont
-        |> MapResponse (fun resp -> { resp with WriteBody = writeBody })
+        |> MapResponse (fun resp ->
+            resp.Body <- body
+            resp
+        )
 
     /// Emits a 301 Moved Permanently response to a given URL.
     let RedirectToUrl<'T> (url: string) : Content<'T> =
@@ -304,11 +346,12 @@ module Content =
     /// Constructs a status code response.
     let httpStatusContent<'T> status : Async<Content<'T>> =
         CustomContent <| fun ctx ->
-            {
-                Status = status
-                Headers = []
-                WriteBody = ignore
-            }
+            //{
+            //    Status = status
+            //    Headers = []
+            //    WriteBody = ignore
+            //}
+            ctx.Request.HttpContext.Response.StatusCode <- status
         |> async.Return
 
     let Unauthorized<'T> : Async<Content<'T>> =

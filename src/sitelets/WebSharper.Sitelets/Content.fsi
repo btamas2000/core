@@ -21,16 +21,18 @@
 namespace WebSharper.Sitelets
 
 open System
+open Sitelets
 open WebSharper
+open Microsoft.AspNetCore.Http
 
 /// Represents server responses to actions. The Page response is special-cased
 /// for combinators to have access to it.
 [<CompiledName "FSharpContent">]
 type Content<'Endpoint> =
     | [<Obsolete "Use Content.Custom">]
-      CustomContent of (Context<'Endpoint> -> Http.Response)
+      CustomContent of (Context<'Endpoint> -> HttpResponse)
     | [<Obsolete "Use Content.Custom">]
-      CustomContentAsync of (Context<'Endpoint> -> Async<Http.Response>)
+      CustomContentAsync of (Context<'Endpoint> -> Async<HttpResponse>)
 
     /// Creates a JSON content from the given object.
     static member Json : 'U -> Async<Content<'Endpoint>>
@@ -53,12 +55,12 @@ type Content<'Endpoint> =
     static member File : path: string * ?AllowOutsideRootFolder: bool * ?ContentType: string -> Async<Content<'Endpoint>>
 
     /// Creates a custom content.
-    static member Custom : Http.Response -> Async<Content<'Endpoint>>
+    static member Custom : HttpResponse -> Async<Content<'Endpoint>>
 
     /// Creates a custom content.
     static member Custom
-        : ?Status: Http.Status
-        * ?Headers: seq<Http.Header>
+        : ?Status: StatusCodes
+        * ?Headers: seq<obj>
         * ?WriteBody: (System.IO.Stream -> unit)
         -> Async<Content<'Endpoint>>
 
@@ -70,11 +72,11 @@ module Content =
     val FromContext : (Context<'T> -> Async<Content<'T>>) -> Async<Content<'T>>
 
     /// Generates an HTTP response.
-    val ToResponse<'T> : Content<'T> -> Context<'T> -> Async<Http.Response>
+    val ToResponse<'T> : Content<'T> -> Context<'T> -> Async<HttpResponse>
 
     /// Generates an HTTP response.
     [<Obsolete "Use ToResponse">]
-    val ToResponseAsync<'T> : Content<'T> -> Context<'T> -> Async<Http.Response>
+    val ToResponseAsync<'T> : Content<'T> -> Context<'T> -> Async<HttpResponse>
 
     /// Wraps an asynchronous content.
     val FromAsync<'T> : Async<Content<'T>> -> Content<'T>
@@ -89,15 +91,15 @@ module Content =
 
     /// Modify the response of a content. Transforms any
     /// content to 'CustomContent'.
-    val MapResponse<'T> : (Http.Response -> Http.Response) -> Async<Content<'T>> -> Async<Content<'T>>
+    val MapResponse<'T> : (HttpResponse -> HttpResponse) -> Async<Content<'T>> -> Async<Content<'T>>
 
     /// Modify the response of a content. Transforms any
     /// content to 'CustomContent'.
-    val MapResponseAsync<'T> : (Http.Response -> Async<Http.Response>) -> Async<Content<'T>> -> Async<Content<'T>>
+    val MapResponseAsync<'T> : (HttpResponse -> Async<HttpResponse>) -> Async<Content<'T>> -> Async<Content<'T>>
 
     /// Add headers to the generated response. Transforms any
     /// content to 'CustomContent'.
-    val WithHeaders<'T> : seq<Http.Header> -> Async<Content<'T>> -> Async<Content<'T>>
+    val WithHeaders<'T> : seq<obj> -> Async<Content<'T>> -> Async<Content<'T>>
 
     /// Add a header to the generated response. Transforms any
     /// content to 'CustomContent'.
@@ -108,11 +110,11 @@ module Content =
 
     /// Replace the headers of the generated response. Transforms any
     /// content to 'CustomContent'.
-    val SetHeaders<'T> : seq<Http.Header> -> Async<Content<'T>> -> Async<Content<'T>>
+    val SetHeaders<'T> : seq<obj> -> Async<Content<'T>> -> Async<Content<'T>>
 
     /// Set the status of the generated response.
     /// Transforms any content to 'CustomContent'.
-    val SetStatus<'T> : status: Http.Status -> Async<Content<'T>> -> Async<Content<'T>>
+    val SetStatus<'T> : status: StatusCodes -> Async<Content<'T>> -> Async<Content<'T>>
 
     /// Set the body writing function of the generated response.
     /// Transforms any content to 'CustomContent'.
@@ -227,13 +229,13 @@ type CSharpContent =
 
     /// Creates a custom content.
     static member Custom
-        : Http.Response
+        : HttpResponse
         -> Task<CSharpContent>
 
     /// Creates a custom content.
     static member Custom
-        : [<Optional>] Status: Http.Status
-        * [<Optional>] Headers: seq<Http.Header>
+        : [<Optional>] Status: StatusCodes
+        * [<Optional>] Headers: seq<obj>
         * [<Optional>] WriteBody: Action<IO.Stream>
         -> Task<CSharpContent>
 
@@ -247,7 +249,7 @@ type CSharpContent =
     static member ToResponse
         : CSharpContent
         * Context
-        -> Task<Http.Response>
+        -> Task<HttpResponse>
 
     /// Wraps an asynchronous content.
     static member FromTask
@@ -259,7 +261,7 @@ type CSharpContent =
     [<Extension>]
     static member MapResponse
         : Task<CSharpContent>
-        * Func<Http.Response, Http.Response>
+        * Func<HttpResponse, HttpResponse>
         -> Task<CSharpContent>
 
     /// Modify the response of a content. Transforms any
@@ -267,7 +269,7 @@ type CSharpContent =
     [<Extension>]
     static member MapResponseAsync
         : Task<CSharpContent>
-        * Func<Http.Response, Task<Http.Response>>
+        * Func<HttpResponse, Task<HttpResponse>>
         -> Task<CSharpContent>
 
     /// Add headers to the generated response. Transforms any
@@ -275,7 +277,7 @@ type CSharpContent =
     [<Extension>]
     static member WithHeaders
         : Task<CSharpContent>
-        * seq<Http.Header>
+        * seq<obj>
         -> Task<CSharpContent>
 
     /// Add headers to the generated response. Transforms any
@@ -283,7 +285,7 @@ type CSharpContent =
     [<Extension>]
     static member WithHeaders
         : Task<CSharpContent>
-        * [<ParamArray>] headers: Http.Header[]
+        * [<ParamArray>] headers: obj[]
         -> Task<CSharpContent>
 
     /// Add a header to the generated response. Transforms any
@@ -307,7 +309,7 @@ type CSharpContent =
     [<Extension>]
     static member SetHeaders
         : Task<CSharpContent>
-        * seq<Http.Header>
+        * seq<obj>
         -> Task<CSharpContent>
 
     /// Replace the headers of the generated response. Transforms any
@@ -315,7 +317,7 @@ type CSharpContent =
     [<Extension>]
     static member SetHeaders
         : Task<CSharpContent>
-        * [<ParamArray>] headers: Http.Header[]
+        * [<ParamArray>] headers: obj[]
         -> Task<CSharpContent>
 
     /// Set the status of the generated response.
@@ -323,7 +325,7 @@ type CSharpContent =
     [<Extension>]
     static member SetStatus
         : Task<CSharpContent>
-        * Http.Status
+        * StatusCodes
         -> Task<CSharpContent>
 
     /// Set the status of the generated response.

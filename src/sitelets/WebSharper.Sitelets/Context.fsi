@@ -21,6 +21,7 @@
 namespace WebSharper.Sitelets
 
 open System.Collections.Generic
+open Microsoft.AspNetCore.Http
 
 /// Provides services available to handlers at run-time.
 [<Class>]
@@ -31,7 +32,7 @@ type Context<'Action> =
     member Link : 'Action -> string
 
     /// HTTP Request object
-    member Request : Http.Request
+    member Request : HttpRequest
 
     new : ApplicationPath : string
         * Link : ('Action -> string)
@@ -39,7 +40,7 @@ type Context<'Action> =
         * Metadata : WebSharper.Core.Metadata.Info
         * Dependencies : WebSharper.Core.DependencyGraph.Graph
         * ResourceContext : WebSharper.Core.Resources.Context
-        * Request : Http.Request
+        * Request : HttpRequest
         * RootFolder : string
         * UserSession : WebSharper.Web.IUserSession
         * Environment : IDictionary<string, obj>

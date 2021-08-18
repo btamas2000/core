@@ -21,6 +21,8 @@
 namespace WebSharper.Sitelets
 
 open System.Collections.Generic
+open Sitelets
+open Microsoft.AspNetCore.Http
 
 type Context<'Action>
     (
@@ -30,7 +32,7 @@ type Context<'Action>
         Metadata : WebSharper.Core.Metadata.Info,
         Dependencies : WebSharper.Core.DependencyGraph.Graph,
         ResourceContext : WebSharper.Core.Resources.Context,
-        Request : Http.Request,
+        Request : HttpRequest,
         RootFolder : string,
         UserSession : WebSharper.Web.IUserSession,
         Environment : IDictionary<string, obj>
@@ -44,7 +46,7 @@ type Context<'Action>
     override this.Dependencies = Dependencies
     override this.ResourceContext = ResourceContext
     member this.Request = Request
-    override this.RequestUri = Request.Uri
+    override this.RequestUri = HttpHelpers.SetUri Request
     override this.RootFolder = RootFolder
     override this.UserSession = UserSession
     override this.Environment = Environment
